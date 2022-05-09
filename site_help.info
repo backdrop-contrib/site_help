@@ -1,0 +1,7 @@
+name = Site Help
+description = Provide contextual site help links via Admin Bar.
+backdrop = 1.x
+type = module
+dependencies[] = admin_bar
+tags[] = admin_bar
+tags[] = help

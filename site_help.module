@@ -1,0 +1,121 @@
+<?php
+
+
+function site_help_admin_bar_output_build(&$content) {
+  // In case your implementation provides a configurable component, check
+  // whether the component should be displayed:
+  if (in_array('shortcut.links', $content['#components']) && !$content['#complete']) {
+    return;
+  }
+  $current_path = current_path();
+  $query = array('query' => array(
+    'destination' => $current_path,
+  ));
+  $path_links = site_help_get_path_links($current_path);
+
+  $content['extra']['extra']['page']['path-links'] = array(
+    '#title' => t('Site help'),
+    '#access' => user_access('administer site configuration'),
+    '#href' => $current_path,
+    '#weight' => -999,
+  );
+
+  if ($path_links) {
+    $menus = menu_router_build();
+    $i = 0;
+    foreach ($path_links as $title => $link) {
+      $content['extra']['extra']['page']['path-links']['path-link-' . $i] = array(
+        '#title' => $title,
+        '#access' => user_access('administer site configuration'),
+        '#href' => $link,
+          '#attributes' => array(
+            'id' => array('path-link-' . $i),
+          ),
+          '#options' => $query,
+      );
+      $i++;
+    }
+  }
+
+}
+
+/**
+ * Get path links.
+ */
+function site_help_get_path_links($path) {
+  $path_links = array();
+  foreach (module_implements('site_help_get_path_links') as $module) {
+    $function = $module . '_site_help_get_path_links';
+    $path_links_return = $function();
+    $path_links = backdrop_array_merge_deep($path_links, $path_links_return);
+  }
+
+  backdrop_alter('site_help_get_path_links', $path_links);
+
+  // Check if this path has a menu wildcard and merge if both have help links.
+  $item = menu_get_item($path);
+  $wildcard_path =  $item['path'];
+
+  $return = array(
+    'Site help' => 'https://docs.backdropcms.org/documentation',
+  );
+
+  if ($wildcard_path != $path) {
+    $return_wildcard_path = isset($path_links[$wildcard_path]) ? $path_links[$wildcard_path] : '';
+    $return_path = isset($path_links[$path]) ? $path_links[$path] : '';
+    if ($return_wildcard_path && $return_path) {
+      $return = array_merge($return_wildcard_path, $return_path);
+    }
+    elseif ($return_path) {
+      $return = $return_path;
+    }
+    else {
+      $return = $return_wildcard_path;
+    }
+  }
+  else {
+    $return = isset($path_links[$path]) ? $path_links[$path] : $return;
+  }
+
+  return $return;
+}
+
+/**
+ * Implements hook_site_help_get_path_links().
+ */
+function site_help_site_help_get_path_links() {
+  module_load_include('inc', 'site_help', 'site_help.default_links');
+  return site_help_default_links();
+}
+
+/**
+ * Implements hook_admin_bar_replacements().
+ */
+function site_help_admin_bar_replacements($complete) {
+  $items = array();
+
+  // If the complete menu is output, then it is uncached and will contain the
+  // current counts already.
+  if (!$complete) {
+    $components = config_get('admin_bar.settings', 'components');
+    // Check whether the page links component is enabled.
+    if (in_array('admin_bar.page', $components)) {
+      $current_path = current_path();
+      $query = array(
+        'query' => array('destination' => $current_path),
+        'attributes' => array('target' => '_blank'),
+      );
+      $path_links = site_help_get_path_links($current_path);
+
+      if ($path_links) {
+        $i = 0;
+        foreach ($path_links as $title => $link) {
+          $items['#path-link-' . $i] = l($title, $link, $query);
+          $i++;
+        }
+      }
+    }
+  }
+
+  return $items;
+}
