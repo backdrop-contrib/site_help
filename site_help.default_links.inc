@@ -8,7 +8,7 @@ function site_help_default_links() {
   $path_links = array(
     'node' => array(
       'Using the Admin Bar' => 'https://docs.backdropcms.org/documentation/using-the-admin-bar',
-      'Quick start guide' => 'Quick start guide',
+      'Quick start guide' => 'https://docs.backdropcms.org/documentation/quick-start-guide',
     ),
     'node/%' => array(
       'Creating and editing content' => 'https://docs.backdropcms.org/documentation/creating-and-editing-content',
