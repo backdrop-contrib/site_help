@@ -8,9 +8,6 @@ function site_help_admin_bar_output_build(&$content) {
     return;
   }
   $current_path = current_path();
-  $query = array('query' => array(
-    'destination' => $current_path,
-  ));
   $path_links = site_help_get_path_links($current_path);
 
   $content['extra']['extra']['page']['path-links'] = array(
@@ -29,14 +26,44 @@ function site_help_admin_bar_output_build(&$content) {
         '#access' => user_access('administer site configuration'),
         '#href' => $link,
           '#attributes' => array(
-            'id' => array('path-link-' . $i),
-          ),
-          '#options' => $query,
+          'id' => array('path-link-' . $i),
+        ),
       );
       $i++;
     }
   }
 
+}
+
+/**
+ * Implements hook_admin_bar_replacements().
+ */
+function site_help_admin_bar_replacements($complete) {
+  $items = array();
+
+  // If the complete menu is output, then it is uncached and will contain the
+  // current counts already.
+  if (!$complete) {
+    $components = config_get('admin_bar.settings', 'components');
+    // Check whether the page links component is enabled.
+    if (in_array('admin_bar.page', $components)) {
+      $current_path = current_path();
+      $attributes = array(
+        'attributes' => array('target' => '_blank'),
+      );
+      $path_links = site_help_get_path_links($current_path);
+
+      if ($path_links) {
+        $i = 0;
+        foreach ($path_links as $title => $link) {
+          $items['#path-link-' . $i] = l($title, $link, $attributes);
+          $i++;
+        }
+      }
+    }
+  }
+
+  return $items;
 }
 
 /**
@@ -57,7 +84,7 @@ function site_help_get_path_links($path) {
   $wildcard_path =  $item['path'];
 
   $return = array(
-    'Site help' => 'https://docs.backdropcms.org/documentation',
+    'Backdrop user guide' => 'https://docs.backdropcms.org/documentation',
   );
 
   if ($wildcard_path != $path) {
@@ -86,36 +113,4 @@ function site_help_get_path_links($path) {
 function site_help_site_help_get_path_links() {
   module_load_include('inc', 'site_help', 'site_help.default_links');
   return site_help_default_links();
-}
-
-/**
- * Implements hook_admin_bar_replacements().
- */
-function site_help_admin_bar_replacements($complete) {
-  $items = array();
-
-  // If the complete menu is output, then it is uncached and will contain the
-  // current counts already.
-  if (!$complete) {
-    $components = config_get('admin_bar.settings', 'components');
-    // Check whether the page links component is enabled.
-    if (in_array('admin_bar.page', $components)) {
-      $current_path = current_path();
-      $query = array(
-        'query' => array('destination' => $current_path),
-        'attributes' => array('target' => '_blank'),
-      );
-      $path_links = site_help_get_path_links($current_path);
-
-      if ($path_links) {
-        $i = 0;
-        foreach ($path_links as $title => $link) {
-          $items['#path-link-' . $i] = l($title, $link, $query);
-          $i++;
-        }
-      }
-    }
-  }
-
-  return $items;
 }
