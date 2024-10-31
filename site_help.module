@@ -17,7 +17,7 @@ function site_help_menu() {
     'access arguments' => array('administer site help'),
   );
   $items['admin/config/administration/site-help/edit'] = array(
-    'title' => 'Add help',
+    'title' => 'Add help link',
     'page callback' => 'backdrop_get_form',
     'page arguments' => array('site_help_edit_form'),
     'access arguments' => array('administer site help'),
@@ -48,6 +48,7 @@ function site_help_permission() {
  */
 function site_help_edit_form($form, &$form_state) {
   if (isset($_GET['site-help-link'])) {
+    backdrop_set_title('Edit help link');
     $path = $_GET['site-help-link'];
     $links = site_help_path_links($path);
     $link_string = '';
@@ -56,19 +57,21 @@ function site_help_edit_form($form, &$form_state) {
       $link_string .= "\n";
     }
   }
-  $form['new_help_wrapper'] = array(
-    '#type' => 'fieldset',
-    '#title' => 'Add new help links',
-  );
-  $form['new_help_wrapper']['new_path'] = array(
+  else {
+    backdrop_set_title('Add help link');
+  }
+
+  $description = t('List one help link per line, separating label and link with pipes, such as "This is some help|http://this/is/the/link/to/this/help/page" (without the quotes). The label will be shown in the UI, in Admin Bar.');
+
+  $form['new_path'] = array(
     '#type' => 'textfield',
     '#title' => 'Path',
     '#default_value' => isset($path) ? $path : '',
   );
-  $form['new_help_wrapper']['allowed_values'] = array(
+  $form['allowed_values'] = array(
     '#type' => 'textarea',
-    '#title' => '',
-    '#description' => '',
+    '#title' => 'Links to help pages for this path',
+    '#description' => $description,
     '#default_value' => isset($link_string) ? $link_string : '',
   );
 
@@ -79,6 +82,16 @@ function site_help_edit_form($form, &$form_state) {
   $form['actions']['submit'] = array(
     '#type' => 'submit',
     '#value' => t('Save'),
+  );
+  $form['actions']['cancel'] = array(
+    '#type' => 'link',
+    '#title' => t('Cancel'),
+    '#href' => 'admin/config/administration/site-help',
+    '#options' => array(
+      'attributes' => array(
+        'class' => array('form-cancel')
+      ),
+    ),
   );
 
   return $form;
@@ -98,15 +111,21 @@ function site_help_edit_form_submit($form, &$form_state) {
     $save_values[$title] = $link;
   }
   config_set('site_help.settings', 'links.' . $values['new_path'], $save_values);
+  $form_state['redirect'] = 'admin/config/administration/site-help';
 }
 
 /**
  * Menu callback to view available help links.
  */
 function site_help_form($form, &$form_state) {
+  $form['help'] = array(
+    '#type' => 'markup',
+    '#markup' => t('Lists all paths for which help links are available, and the help links for those paths. If the checkbox is not selected, this link will not be shown to the user.'),
+  );
+
   $header = array(
-    'title' => array('data' => t('Title')),
-    'titles' => array('data' => t('Link title')),
+    'title' => array('data' => t('Path')),
+    'titles' => array('data' => t('Links')),
     'edit' => array('data' => t('')),
   );
 
@@ -299,4 +318,16 @@ function site_help_path_links($path = NULL) {
 function site_help_site_help_path_links() {
   module_load_include('inc', 'site_help', 'site_help.default_links');
   return site_help_default_links();
+}
+
+/**
+ * Implements hook_config_info().
+ */
+function site_help_config_info() {
+  $prefixes['site_help.settings'] = array(
+    'label' => t('Site help settings'),
+    'group' => t('Configuration'),
+  );
+
+  return $prefixes;
 }
