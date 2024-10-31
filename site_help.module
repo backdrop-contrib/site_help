@@ -1,6 +1,180 @@
 <?php
 
+/**
+ * @file
+ * Provides contextual site help links via Admin Bar.
+ */
 
+/**
+* Implements hook_menu().
+*/
+function site_help_menu() {
+  $items = array();
+  $items['admin/config/administration/site-help'] = array(
+    'title' => 'Site help',
+    'page callback' => 'backdrop_get_form',
+    'page arguments' => array('site_help_form'),
+    'access arguments' => array('administer site help'),
+  );
+  $items['admin/config/administration/site-help/edit'] = array(
+    'title' => 'Add help',
+    'page callback' => 'backdrop_get_form',
+    'page arguments' => array('site_help_edit_form'),
+    'access arguments' => array('administer site help'),
+    'type' => MENU_LOCAL_ACTION,
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function site_help_permission() {
+  return array(
+    'access site help' => array(
+      'title' => t('Access site help'),
+      'description' => t('View site help, either in Admin Bar or in a block.'),
+    ),
+    'administer site help' => array(
+      'title' => t('Administer site help'),
+      'description' => t('Administer site help.'),
+    ),
+  );
+}
+
+/**
+ * Menu callback to add or modify site a help link.
+ */
+function site_help_edit_form($form, &$form_state) {
+  if (isset($_GET['site-help-link'])) {
+    $path = $_GET['site-help-link'];
+    $links = site_help_path_links($path);
+    $link_string = '';
+    foreach ($links as $label => $link) {
+      $link_string .= $label . '|' . $link;
+      $link_string .= "\n";
+    }
+  }
+  $form['new_help_wrapper'] = array(
+    '#type' => 'fieldset',
+    '#title' => 'Add new help links',
+  );
+  $form['new_help_wrapper']['new_path'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Path',
+    '#default_value' => isset($path) ? $path : '',
+  );
+  $form['new_help_wrapper']['allowed_values'] = array(
+    '#type' => 'textarea',
+    '#title' => '',
+    '#description' => '',
+    '#default_value' => isset($link_string) ? $link_string : '',
+  );
+
+  $form['actions'] = array(
+    '#type' => 'actions',
+    '#weight' => 3,
+  );
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save'),
+  );
+
+  return $form;
+}
+
+/**
+ * Submit handler for site_help_edit_form().
+ */
+function site_help_edit_form_submit($form, &$form_state) {
+  $values = $form_state['values'];
+  $line_values = explode("\n", trim($values['allowed_values']));
+  $save_values = array();
+  foreach ($line_values as $line) {
+    $data = explode('|', $line);
+    $title = trim($data[0]);
+    $link = trim($data[1]);
+    $save_values[$title] = $link;
+  }
+  config_set('site_help.settings', 'links.' . $values['new_path'], $save_values);
+}
+
+/**
+ * Menu callback to view available help links.
+ */
+function site_help_form($form, &$form_state) {
+  $header = array(
+    'title' => array('data' => t('Title')),
+    'titles' => array('data' => t('Link title')),
+    'edit' => array('data' => t('')),
+  );
+
+  $form_state['helps'] = site_help_path_links();
+  $settings = config_get('site_help.settings');
+  // If settings empty, the form has never been saved, so make everything
+  // enabled.
+  $enabled_links = empty($settings) ? array_keys($form_state['helps']) : $settings['enabled_links'];
+
+  $options = array();
+  foreach ($form_state['helps'] as $path => $help) {
+    $links = array();
+    foreach ($help as $title => $link) {
+      $links[] = l($title, $link, array('attributes' => array('title' => $link)));
+    }
+
+    $options[$path] = array(
+      'title' => array(
+        'data' => array(
+          '#markup' => $path,
+        ),
+      ),
+      'titles' => array(
+        'data' => array(
+          '#markup' => theme('item_list', array('items' => $links)),
+        ),
+      ),
+      'edit' => array(
+        'data' => array(
+          '#markup' => l('edit', 'admin/config/administration/site-help/edit', array('query' => array('site-help-link' => $path))),
+        ),
+      ),
+    );
+
+    $form['help_links'] = array(
+      '#type' => 'tableselect',
+      '#header' => $header,
+      '#options' => $options,
+      '#default_value' => backdrop_map_assoc($enabled_links),
+      '#empty' => t('No help links available.'),
+    );
+  }
+
+  $form['actions'] = array(
+    '#type' => 'actions',
+    '#weight' => 3,
+  );
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save'),
+  );
+
+  return $form;
+}
+
+/**
+ * Submit handler for site_help_form().
+ */
+function site_help_form_submit($form, &$form_state) {
+  $config = config('site_help.settings');
+  $config->set('enabled_links', array_keys(array_filter($form_state['values']['help_links'])));
+  $config->set('links', $form_state['helps']);
+  $config->save();
+}
+
+/**
+* Implements hook_admin_bar_output_build().
+*/
 function site_help_admin_bar_output_build(&$content) {
   // In case your implementation provides a configurable component, check
   // whether the component should be displayed:
@@ -8,11 +182,11 @@ function site_help_admin_bar_output_build(&$content) {
     return;
   }
   $current_path = current_path();
-  $path_links = site_help_get_path_links($current_path);
+  $path_links = site_help_path_links($current_path);
 
   $content['extra']['extra']['page']['path-links'] = array(
     '#title' => t('Site help'),
-    '#access' => user_access('administer site configuration'),
+    '#access' => user_access('access site help'),
     '#href' => $current_path,
     '#weight' => -999,
   );
@@ -23,7 +197,7 @@ function site_help_admin_bar_output_build(&$content) {
     foreach ($path_links as $title => $link) {
       $content['extra']['extra']['page']['path-links']['path-link-' . $i] = array(
         '#title' => $title,
-        '#access' => user_access('administer site configuration'),
+        '#access' => user_access('access site help'),
         '#href' => $link,
           '#attributes' => array(
           'id' => array('path-link-' . $i),
@@ -51,7 +225,7 @@ function site_help_admin_bar_replacements($complete) {
       $attributes = array(
         'attributes' => array('target' => '_blank'),
       );
-      $path_links = site_help_get_path_links($current_path);
+      $path_links = site_help_path_links($current_path);
 
       if ($path_links) {
         $i = 0;
@@ -67,25 +241,37 @@ function site_help_admin_bar_replacements($complete) {
 }
 
 /**
- * Get path links.
+ * Get available path links.
  */
-function site_help_get_path_links($path) {
+function site_help_path_links($path = NULL) {
+  $settings = config_get('site_help.settings');
+  $path_links_saved = empty($settings['links']) ? array() : $settings['links'];
+
   $path_links = array();
-  foreach (module_implements('site_help_get_path_links') as $module) {
-    $function = $module . '_site_help_get_path_links';
+  foreach (module_implements('site_help_path_links') as $module) {
+    $function = $module . '_site_help_path_links';
     $path_links_return = $function();
     $path_links = backdrop_array_merge_deep($path_links, $path_links_return);
   }
+  $path_links = $path_links_saved + $path_links;
 
-  backdrop_alter('site_help_get_path_links', $path_links);
+  backdrop_alter('site_help_path_links', $path_links);
+
+  if (!$path) {
+    return $path_links;
+  }
 
   // Check if this path has a menu wildcard and merge if both have help links.
   $item = menu_get_item($path);
-  $wildcard_path =  $item['path'];
+  $wildcard_path =  $item ? $item['path'] : $path;
 
   $return = array(
     'Backdrop user guide' => 'https://docs.backdropcms.org/documentation',
   );
+  // If this path is not enabled, return;
+  if (!empty($settings['enabled_links']) && !in_array($path, $settings['enabled_links'])) {
+    return $return;
+  }
 
   if ($wildcard_path != $path) {
     $return_wildcard_path = isset($path_links[$wildcard_path]) ? $path_links[$wildcard_path] : '';
@@ -108,9 +294,9 @@ function site_help_get_path_links($path) {
 }
 
 /**
- * Implements hook_site_help_get_path_links().
+ * Implements hook_site_help_path_links().
  */
-function site_help_site_help_get_path_links() {
+function site_help_site_help_path_links() {
   module_load_include('inc', 'site_help', 'site_help.default_links');
   return site_help_default_links();
 }
