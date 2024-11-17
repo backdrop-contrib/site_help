@@ -1,15 +1,11 @@
 Site help
 =======
 
-Description
------------
+Provides help about the page being visited, accessed via the Admin Bar. The
+default Site Help links are links to relevant help pages on Backdrop CMS
+documentation at https://docs.backdropcms.org/documentation/user-guide.
 
-Provides users visiting a page on your website with links to help about the page
-being visited, accessed via the Admin Bar. The default help links enabled with
-this module are links to relevant help pages on Backdrop CMS documentation at
-https://docs.backdropcms.org/documentation/user-guide.
-
-Links appear under `Admin Bar > This page > Site help`.
+Links appear under Admin Bar > This page > Site help.
 
 For example:
 
