@@ -1,24 +1,24 @@
 Site help
 =======
 
-Provides help about the page being visited, accessed via the Admin Bar. The
-default Site Help links are links to relevant help pages on Backdrop CMS
-documentation at https://docs.backdropcms.org/documentation/user-guide.
-
+Provides help about the page being visited, accessed via the Admin Bar. 
 Links appear under Admin Bar > This page > Site help.
-
 For example:
 
-- When visiting `node/add/page` on your site, the site help shows a link to 
+- When visiting `node/add/page` on your site, the Site Help shows a link to 
   "Creating and editing content", which is the Backdrop User Guide page about
   editing and adding site content.
 
-A hook is provided to allow links to be created to module-defined help pages.
+The default Site Help links are to relevant documentation on Backdrop CMS
+user guide at https://docs.backdropcms.org/documentation/user-guide.
 
 A form is also provided at `admin/config/administration/site-help/edit` to
-manually create additional help links.
+manually create additional help links. This way, you can create a custom user
+guide, and link to it, or provide links to existing pages on the internet.
 
-All links can be disabled.
+A hook is provided to allow links to be created to module-defined help pages.
+
+All links can be disabled individually.
 
 
 Installation
